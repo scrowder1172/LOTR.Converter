@@ -105,10 +105,10 @@ struct MainView: View {
             }
         }
         .background(Color.brown)
-        .sheet(isPresented: $isShowingExchangeRates) {
+        .fullScreenCover(isPresented: $isShowingExchangeRates) {
             ExchangeRatesView()
         }
-        .sheet(isPresented: $isShowingChangeCurrency) {
+        .fullScreenCover(isPresented: $isShowingChangeCurrency) {
             ChangeCurrencyView()
         }
     }
