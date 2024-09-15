@@ -19,6 +19,7 @@ struct ChangeCurrencyView: View {
             
             Image(.parchment)
                 .resizable()
+                .ignoresSafeArea()
             
             VStack {
                 VStack{
