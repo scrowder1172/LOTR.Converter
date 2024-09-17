@@ -5,23 +5,30 @@
 // Created by SCOTT CROWDER on 9/13/24.
 // 
 // Copyright © Playful Logic Studios, LLC 2024. All rights reserved.
-// 
+//
+// Additional features:
+//      Add 6th currency
+//      Persist curreny selections when app is closed
+//      Dismiss keyboard
+//      Refactor currency VStacks so that they use the same code
 
 
 import SwiftUI
+import TipKit
 
 struct MainView: View {
     
-    @State private var fromValue: String = ""
-    @State private var fromImage: String = "silverpiece"
-    @State private var fromCurrency: String = "Silver Piece"
+    @State private var leftCurrency: Currency = .silverPiece
+    @State private var leftValue: String = ""
     
-    @State private var toValue: String = ""
-    @State private var toImage: String = "goldpiece"
-    @State private var toCurrency: String = "Gold Piece"
+    @State private var rightCurrency: Currency = .goldPiece
+    @State private var rightValue: String = ""
     
     @State private var isShowingExchangeRates: Bool = false
-    @State private var isShowingChangeCurrency: Bool = false
+    @State private var isShowingSelectCurrency: Bool = false
+    
+    @FocusState var leftTyping
+    @FocusState var rightTyping
     
     var body: some View {
         ZStack {
@@ -41,22 +48,32 @@ struct MainView: View {
                 
                 HStack {
                     VStack {
-                        Button {
-                            isShowingChangeCurrency = true
-                        } label: {
-                            Image(fromImage)
+                        HStack {
+                            Image(leftCurrency.image)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 30, height: 30)
-                            Text(fromCurrency)
+                            Text(leftCurrency.currencyName)
                                 .font(.headline)
                                 .foregroundStyle(.white)
                         }
+                        .onTapGesture {
+                            isShowingSelectCurrency = true
+                        }
+                        .accessibilityAddTraits(.isButton)
+                        .popoverTip(CurrencyTip(), arrowEdge: .bottom)
                         
-                        TextField("Amount", text: $fromValue)
+                        TextField("Amount", text: $leftValue)
                             .textFieldStyle(.roundedBorder)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                             .padding(.horizontal)
+                            .focused($leftTyping)
+                            .onChange(of: leftValue) { oldValue, newValue in
+                                // could be moved to zstack because it is not explicitly tied to the textfield
+                                if leftTyping {
+                                    rightValue = leftCurrency.convert(leftValue, to: rightCurrency)
+                                }
+                            }
                     }
                     
                     Image(systemName: "equal")
@@ -65,23 +82,33 @@ struct MainView: View {
 //                        .symbolEffect(.pulse)
                     
                     VStack {
-                        Button {
-                            isShowingChangeCurrency = true
-                        } label: {
-                            Text(toCurrency)
+                        HStack {
+                            Text(rightCurrency.currencyName)
                                 .font(.headline)
                                 .keyboardType(.numberPad)
                                 .foregroundStyle(.white)
-                            Image(toImage)
+                            Image(rightCurrency.image)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 30, height: 30)
                         }
+                        .onTapGesture {
+                            isShowingSelectCurrency = true
+                        }
+                        .accessibilityAddTraits(.isButton)
                         
-                        TextField("Amount", text: $toValue)
+                        TextField("Amount", text: $rightValue)
                             .textFieldStyle(.roundedBorder)
                             .multilineTextAlignment(.trailing)
+                            .keyboardType(.decimalPad)
                             .padding(.horizontal)
+                            .focused($rightTyping)
+                            .onChange(of: rightValue) { oldValue, newValue in
+                                // could be moved to zstack because it is not explicitly tied to the textfield
+                                if rightTyping {
+                                    leftValue = rightCurrency.convert(rightValue, to: leftCurrency)
+                                }
+                            }
                     }
                 }
                 .padding()
@@ -104,12 +131,27 @@ struct MainView: View {
                 }
             }
         }
+        .task {
+            do {
+                try Tips.configure()
+            } catch {
+                print("Error: \(error.localizedDescription)")
+            }
+        }
         .background(Color.brown)
+        .onChange(of: leftCurrency) { oldValue, newValue in
+            // recalculate conversion when user changes denomination
+            leftValue = rightCurrency.convert(rightValue, to: leftCurrency)
+        }
+        .onChange(of: rightCurrency) { oldValue, newValue in
+            // recalculate conversion when user changes denomination
+            rightValue = leftCurrency.convert(leftValue, to: rightCurrency)
+        }
         .fullScreenCover(isPresented: $isShowingExchangeRates) {
             ExchangeRatesView()
         }
-        .fullScreenCover(isPresented: $isShowingChangeCurrency) {
-            ChangeCurrencyView()
+        .fullScreenCover(isPresented: $isShowingSelectCurrency) {
+            SelectCurrencyView(topCurrency: $leftCurrency, bottomCurrency: $rightCurrency)
         }
     }
 }
